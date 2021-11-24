@@ -13,14 +13,14 @@ public class AreaProtection : FortressCraftMod
     private Vector3 playerPosition;
     private Vector3 clientAreaPosition;
     private static bool ableToClaim;
-    private static GameObject protectionSphere;
+    private static GameObject protectionCylinder;
     private static List<string> savedPlayers;
     private static List<Player> allowedPlayers;
-    private static Texture2D protectionSphereTexture;
+    private static Texture2D protectionCylinderTexture;
     private static List<Area> areas = new List<Area>();
     private static readonly string assemblyFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-    private static readonly string protectionSphereTexurePath = Path.Combine(assemblyFolder, "Images/ProtectionSphere.png");
-    private UriBuilder protectionSphereUriBuilder = new UriBuilder(protectionSphereTexurePath);
+    private static readonly string protectionCylinderTexurePath = Path.Combine(assemblyFolder, "Images/ProtectionCylinder.png");
+    private UriBuilder protectionCylinderUriBuilder = new UriBuilder(protectionCylinderTexurePath);
     private static readonly string areasFilePath = Path.Combine(assemblyFolder, "areas.txt");
     private static readonly string playersFilePath = Path.Combine(assemblyFolder, "players.txt");
 
@@ -38,12 +38,12 @@ public class AreaProtection : FortressCraftMod
     {
         savedPlayers = new List<string>();
         allowedPlayers = new List<Player>();
-        protectionSphereUriBuilder.Scheme = "file";
-        protectionSphereTexture = new Texture2D(1024, 1024, TextureFormat.DXT5, false);
-        using (WWW www = new WWW(protectionSphereUriBuilder.ToString()))
+        protectionCylinderUriBuilder.Scheme = "file";
+        protectionCylinderTexture = new Texture2D(1024, 1024, TextureFormat.DXT5, false);
+        using (WWW www = new WWW(protectionCylinderUriBuilder.ToString()))
         {
             yield return www;
-            www.LoadImageIntoTexture(protectionSphereTexture);
+            www.LoadImageIntoTexture(protectionCylinderTexture);
         }
 
         if (WorldScript.mbIsServer || NetworkManager.mbHostingServer)
@@ -130,18 +130,18 @@ public class AreaProtection : FortressCraftMod
                 showGUI = !showGUI;
             }
 
-            if (PlayerPrefs.GetInt(NetworkManager.instance.mClientThread.serverIP + "createdSphere") == 1)
+            if (PlayerPrefs.GetInt(NetworkManager.instance.mClientThread.serverIP + "createdCylinder") == 1)
             {
-                if (protectionSphere == null)
+                if (protectionCylinder == null)
                 {
                     ulong userID = NetworkManager.instance.mClientThread.mPlayer.mUserID;
                     System.Net.IPAddress serverIP = NetworkManager.instance.mClientThread.serverIP;
 
-                    float sphereX = PlayerPrefs.GetFloat(userID + ":" + serverIP + "sphereX");
-                    float sphereY = PlayerPrefs.GetFloat(userID + ":" + serverIP + "sphereY");
-                    float sphereZ = PlayerPrefs.GetFloat(userID + ":" + serverIP + "sphereZ");
-                    Vector3 spherePosition = new Vector3(sphereX, sphereY, sphereZ);
-                    CreateProtectionSphere(spherePosition);
+                    float cylinderX = PlayerPrefs.GetFloat(userID + ":" + serverIP + "cylinderX");
+                    float cylinderY = PlayerPrefs.GetFloat(userID + ":" + serverIP + "cylinderY");
+                    float cylinderZ = PlayerPrefs.GetFloat(userID + ":" + serverIP + "cylinderZ");
+                    Vector3 cylinderPosition = new Vector3(cylinderX, cylinderY, cylinderZ);
+                    CreateProtectionCylinder(cylinderPosition);
 
                     float areaX = PlayerPrefs.GetFloat(userID + ":" + serverIP + "areaX");
                     float areaY = PlayerPrefs.GetFloat(userID + ":" + serverIP + "areaY");
@@ -223,21 +223,21 @@ public class AreaProtection : FortressCraftMod
         {
             ModManager.ModSendClientCommToServer("Maverick.AreaProtection", 0);
 
-            if (protectionSphere == null)
+            if (protectionCylinder == null)
             {
-                CreateProtectionSphere(Camera.main.transform.position);
+                CreateProtectionCylinder(Camera.main.transform.position);
             }
             else
             {
-                MoveProtectionSphere(Camera.main.transform.position);
+                MoveProtectionCylinder(Camera.main.transform.position);
             }
 
             Player player = NetworkManager.instance.mClientThread.mPlayer;
             System.Net.IPAddress serverIP = NetworkManager.instance.mClientThread.serverIP;
-            PlayerPrefs.SetInt(player.mUserID + ":" + serverIP + "createdSphere", 1);
-            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "sphereX", Camera.main.transform.position.x);
-            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "sphereY", Camera.main.transform.position.y);
-            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "sphereZ", Camera.main.transform.position.z);
+            PlayerPrefs.SetInt(player.mUserID + ":" + serverIP + "createdCylinder", 1);
+            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "cylinderX", Camera.main.transform.position.x);
+            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "cylinderY", Camera.main.transform.position.y);
+            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "cylinderZ", Camera.main.transform.position.z);
             PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "areaX", player.mnWorldX);
             PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "areaY", player.mnWorldY);
             PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "areaZ", player.mnWorldZ);
@@ -317,7 +317,9 @@ public class AreaProtection : FortressCraftMod
                                 {
                                     if (areas[j].areaID != player.mUserName + player.mUserID)
                                     {
-                                        int distance = (int)Vector3.Distance(clientPosition, areas[j].areaLocation);
+                                        Vector2 clientPos2D = new Vector2(clientPosition.x, clientPosition.z);
+                                        Vector2 areaPos2D = new Vector2(areas[j].areaLocation.x, areas[j].areaLocation.z);
+                                        int distance = (int)Vector2.Distance(clientPos2D, areaPos2D);
 
                                         if (distance <= 500)
                                         {
@@ -408,37 +410,39 @@ public class AreaProtection : FortressCraftMod
         NetworkManager.instance.mClientThread.mPlayer.mInventory.CollectValue(eCubeTypes.PyrothermicGenerator, 0, 2);
     }
 
-    // Creates the protection sphere.
-    private static void CreateProtectionSphere(Vector3 position)
+    // Creates the protection cylinder.
+    private static void CreateProtectionCylinder(Vector3 position)
     {
-        protectionSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        protectionSphere.transform.position = position;
-        protectionSphere.transform.localScale += new Vector3(372, 372, 372);
-        protectionSphere.GetComponent<Renderer>().material.mainTexture = protectionSphereTexture;
-        protectionSphere.GetComponent<Renderer>().receiveShadows = false;
-        protectionSphere.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        protectionSphere.GetComponent<Renderer>().material.shader = Shader.Find("Transparent/Diffuse");
-        protectionSphere.GetComponent<Renderer>().material.EnableKeyword("_ALPHATEST_ON");
+        protectionCylinder = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        protectionCylinder.transform.position = position;
+        protectionCylinder.transform.localScale += new Vector3(372, 4000, 372);
+        protectionCylinder.GetComponent<Renderer>().material.mainTexture = protectionCylinderTexture;
+        protectionCylinder.GetComponent<Renderer>().material.mainTextureScale = new Vector2(1, 10);
+        protectionCylinder.GetComponent<Renderer>().receiveShadows = false;
+        protectionCylinder.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        protectionCylinder.GetComponent<Renderer>().material.shader = Shader.Find("Transparent/Diffuse");
+        protectionCylinder.GetComponent<Renderer>().material.EnableKeyword("_ALPHATEST_ON");
 
-        GameObject protectionSphereInner = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        protectionSphereInner.transform.position = Camera.main.transform.position;
-        protectionSphereInner.transform.localScale += new Vector3(372, 372, 372);
-        ConvertNormals(protectionSphereInner);
-        protectionSphereInner.GetComponent<Renderer>().material.mainTexture = protectionSphereTexture;
-        protectionSphereInner.GetComponent<Renderer>().receiveShadows = false;
-        protectionSphereInner.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        protectionSphereInner.GetComponent<Renderer>().material.shader = Shader.Find("Transparent/Diffuse");
-        protectionSphereInner.GetComponent<Renderer>().material.EnableKeyword("_ALPHATEST_ON");
-        protectionSphereInner.transform.SetParent(protectionSphere.transform);
+        GameObject protectionCylinderInner = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        protectionCylinderInner.transform.position = Camera.main.transform.position;
+        protectionCylinderInner.transform.localScale += new Vector3(372, 4000, 372);
+        ConvertNormals(protectionCylinderInner);
+        protectionCylinderInner.GetComponent<Renderer>().material.mainTexture = protectionCylinderTexture;
+        protectionCylinderInner.GetComponent<Renderer>().material.mainTextureScale = new Vector2(1, 10);
+        protectionCylinderInner.GetComponent<Renderer>().receiveShadows = false;
+        protectionCylinderInner.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        protectionCylinderInner.GetComponent<Renderer>().material.shader = Shader.Find("Transparent/Diffuse");
+        protectionCylinderInner.GetComponent<Renderer>().material.EnableKeyword("_ALPHATEST_ON");
+        protectionCylinderInner.transform.SetParent(protectionCylinder.transform);
     }
 
-    // Moves the protection sphere.
-    private static void MoveProtectionSphere(Vector3 position)
+    // Moves the protection cylinder.
+    private static void MoveProtectionCylinder(Vector3 position)
     {
-        protectionSphere.transform.position = position;
+        protectionCylinder.transform.position = position;
     }
 
-    // Recalculates mesh normals so textures are visible inside the sphere.
+    // Recalculates mesh normals so textures are visible inside the cylinder.
     private static void ConvertNormals(GameObject obj)
     {
         MeshFilter filter = obj.GetComponent(typeof(MeshFilter)) as MeshFilter;
@@ -491,13 +495,13 @@ public class AreaProtection : FortressCraftMod
                     "\nYou cannot build here." +
                     "\nPress End key to toggle messages.";
                 }
-                else if (ableToClaim == true && protectionSphere == null)
+                else if (ableToClaim == true && protectionCylinder == null)
                 {
                     message = "[Area Protection Mod]" +
                     "\nPress Home key to claim this area." +
                     "\nPress End key to toggle messages.";
                 }
-                else if (ableToClaim == true && protectionSphere != null)
+                else if (ableToClaim == true && protectionCylinder != null)
                 {
                     message = "[Area Protection Mod]" +
                     "\nPress Home key to relocate your claimed area." +
@@ -505,7 +509,7 @@ public class AreaProtection : FortressCraftMod
                     "\nYour current coordinates are " + playerPosition +
                     "\nPress End key to toggle messages.";
                 }
-                else if (ableToClaim == false && protectionSphere != null)
+                else if (ableToClaim == false && protectionCylinder != null)
                 {
                     message = "[Area Protection Mod]" +
                     "\nYou cannot claim this area." +
@@ -514,7 +518,7 @@ public class AreaProtection : FortressCraftMod
                     "\nYour current coordinates are " + playerPosition +
                     "\nPress End key to toggle messages.";
                 }
-                else if (ableToClaim == false && protectionSphere == null)
+                else if (ableToClaim == false && protectionCylinder == null)
                 {
                     message = "[Area Protection Mod]" +
                     "\nYou cannot claim this area." +
