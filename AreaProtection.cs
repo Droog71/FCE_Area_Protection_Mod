@@ -33,7 +33,7 @@ public class AreaProtection : FortressCraftMod
         return modRegistrationData;
     }
 
-    //! Called by unity engine on start up to initialize variables.
+    // Called by unity engine on start up to initialize variables.
     public IEnumerator Start()
     {
         savedPlayers = new List<string>();
@@ -130,31 +130,46 @@ public class AreaProtection : FortressCraftMod
                 showGUI = !showGUI;
             }
 
-            if (PlayerPrefs.GetInt(NetworkManager.instance.mClientThread.serverIP + "createdCylinder") == 1)
+            UpdateClient();
+        }
+    }
+
+    // Loads info about client's protected area and updates player position.
+    private void UpdateClient()
+    {
+        if (NetworkManager.instance.mClientThread != null)
+        {
+            if (NetworkManager.instance.mClientThread.mPlayer != null)
             {
-                if (protectionCylinder == null)
+                ulong userID = NetworkManager.instance.mClientThread.mPlayer.mUserID;
+                System.Net.IPAddress serverIP = NetworkManager.instance.mClientThread.serverIP;
+
+                if (serverIP != null)
                 {
-                    ulong userID = NetworkManager.instance.mClientThread.mPlayer.mUserID;
-                    System.Net.IPAddress serverIP = NetworkManager.instance.mClientThread.serverIP;
+                    if (PlayerPrefs.GetInt(userID + ":" + serverIP + "createdCylinder") == 1)
+                    {
+                        if (protectionCylinder == null)
+                        {
+                            float cylinderX = PlayerPrefs.GetFloat(userID + ":" + serverIP + "cylinderX");
+                            float cylinderY = PlayerPrefs.GetFloat(userID + ":" + serverIP + "cylinderY");
+                            float cylinderZ = PlayerPrefs.GetFloat(userID + ":" + serverIP + "cylinderZ");
+                            Vector3 cylinderPosition = new Vector3(cylinderX, cylinderY, cylinderZ);
+                            CreateProtectionCylinder(cylinderPosition);
 
-                    float cylinderX = PlayerPrefs.GetFloat(userID + ":" + serverIP + "cylinderX");
-                    float cylinderY = PlayerPrefs.GetFloat(userID + ":" + serverIP + "cylinderY");
-                    float cylinderZ = PlayerPrefs.GetFloat(userID + ":" + serverIP + "cylinderZ");
-                    Vector3 cylinderPosition = new Vector3(cylinderX, cylinderY, cylinderZ);
-                    CreateProtectionCylinder(cylinderPosition);
-
-                    float areaX = PlayerPrefs.GetFloat(userID + ":" + serverIP + "areaX");
-                    float areaY = PlayerPrefs.GetFloat(userID + ":" + serverIP + "areaY");
-                    float areaZ = PlayerPrefs.GetFloat(userID + ":" + serverIP + "areaZ");
-                    clientAreaPosition = new Vector3(areaX, areaY, areaZ);
+                            float areaX = PlayerPrefs.GetFloat(userID + ":" + serverIP + "areaX");
+                            float areaY = PlayerPrefs.GetFloat(userID + ":" + serverIP + "areaY");
+                            float areaZ = PlayerPrefs.GetFloat(userID + ":" + serverIP + "areaZ");
+                            clientAreaPosition = new Vector3(areaX, areaY, areaZ);
+                        }
+                    }
                 }
-            }
 
-            Player player = NetworkManager.instance.mClientThread.mPlayer;
-            float x = player.mnWorldX - WorldScript.instance.mWorldData.mSpawnX;
-            float y = player.mnWorldY - WorldScript.instance.mWorldData.mSpawnY;
-            float z = player.mnWorldZ - WorldScript.instance.mWorldData.mSpawnZ;
-            playerPosition = new Vector3(x, y, z);
+                Player player = NetworkManager.instance.mClientThread.mPlayer;
+                float x = player.mnWorldX - WorldScript.instance.mWorldData.mSpawnX;
+                float y = player.mnWorldY - WorldScript.instance.mWorldData.mSpawnY;
+                float z = player.mnWorldZ - WorldScript.instance.mWorldData.mSpawnZ;
+                playerPosition = new Vector3(x, y, z);
+            }
         }
     }
 
@@ -317,9 +332,13 @@ public class AreaProtection : FortressCraftMod
                                 {
                                     if (areas[j].areaID != player.mUserName + player.mUserID)
                                     {
+<<<<<<< HEAD
                                         Vector2 clientPos2D = new Vector2(clientPosition.x, clientPosition.z);
                                         Vector2 areaPos2D = new Vector2(areas[j].areaLocation.x, areas[j].areaLocation.z);
                                         int distance = (int)Vector2.Distance(clientPos2D, areaPos2D);
+=======
+                                        int distance = (int)Vector3.Distance(clientPosition, areas[j].areaLocation);
+>>>>>>> c88b64bd8aa2f9d873be5cbfac80a552418d58ec
 
                                         if (distance <= 500)
                                         {
