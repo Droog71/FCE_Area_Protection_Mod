@@ -332,13 +332,9 @@ public class AreaProtection : FortressCraftMod
                                 {
                                     if (areas[j].areaID != player.mUserName + player.mUserID)
                                     {
-<<<<<<< HEAD
                                         Vector2 clientPos2D = new Vector2(clientPosition.x, clientPosition.z);
                                         Vector2 areaPos2D = new Vector2(areas[j].areaLocation.x, areas[j].areaLocation.z);
                                         int distance = (int)Vector2.Distance(clientPos2D, areaPos2D);
-=======
-                                        int distance = (int)Vector3.Distance(clientPosition, areas[j].areaLocation);
->>>>>>> c88b64bd8aa2f9d873be5cbfac80a552418d58ec
 
                                         if (distance <= 500)
                                         {
