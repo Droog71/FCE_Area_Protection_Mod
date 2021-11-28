@@ -180,25 +180,34 @@ public class AreaProtection : FortressCraftMod
         public Vector3 areaLocation;
     }
 
+    // Holds information for server to client comms.
+    private struct ServerMessage
+    {
+        public int newPlayer;
+        public int allowedToClaim;
+        public int permissions;
+    }
+
     // Networking.
     private static void ClientRead(NetIncomingMessage netIncomingMessage)
     {
-        int readInt = netIncomingMessage.ReadInt32();
-        if (readInt == 1)
+        int readInt1 = netIncomingMessage.ReadInt32();
+        int playerID = (int)NetworkManager.instance.mClientThread.mPlayer.mUserID;
+
+        if (readInt1 == playerID)
         {
-            ableToClaim = false;
-        }
-        else if (readInt == 3)
-        {
-            ableToClaim = true;
-        }
-        else if (readInt == 5)
-        {
-            CollectStartingItems();
-        }
-        else
-        {
-            NetworkManager.instance.mClientThread.mPlayer.mBuildPermission = (eBuildPermission)readInt;
+            int readInt2 = netIncomingMessage.ReadInt32();
+
+            if (readInt2 == 1)
+            {
+                CollectStartingItems();
+            }
+
+            int readInt3 = netIncomingMessage.ReadInt32();
+            ableToClaim = readInt3 == 1;
+
+            int readInt4 = netIncomingMessage.ReadInt32();
+            NetworkManager.instance.mClientThread.mPlayer.mBuildPermission = (eBuildPermission)readInt4;
         }
     }
 
@@ -217,7 +226,11 @@ public class AreaProtection : FortressCraftMod
     // Networking.
     private static void ServerWrite(BinaryWriter writer, Player player, object data)
     {
-        writer.Write((int)data);
+        ServerMessage message = (ServerMessage)data;
+        writer.Write((int)player.mUserID);
+        writer.Write(message.newPlayer);
+        writer.Write(message.allowedToClaim);
+        writer.Write(message.permissions);
     }
 
     // Sends chat messages from the server.
@@ -348,14 +361,19 @@ public class AreaProtection : FortressCraftMod
                                     }
                                 }
 
+                                ServerMessage message = new ServerMessage();
+
                                 if (savedPlayers != null)
                                 {
                                     if (!savedPlayers.Contains(player.mUserID + player.mUserName))
                                     {
                                         Announce("Giving starting items to " + player.mUserName);
                                         SavePlayer(player.mUserID + player.mUserName);
-                                        ModManager.ModSendServerCommToClient("Maverick.AreaProtection", player, 5);
-                                        yield return new WaitForSeconds(0.5f);
+                                        message.newPlayer = 1;
+                                    }
+                                    else
+                                    {
+                                        message.newPlayer = 0;
                                     }
                                 }
 
@@ -367,8 +385,7 @@ public class AreaProtection : FortressCraftMod
                                         {
                                             allowedPlayers.Remove(player);
                                         }
-                                        ModManager.ModSendServerCommToClient("Maverick.AreaProtection", player, 1);
-                                        yield return new WaitForSeconds(0.5f);
+                                        message.allowedToClaim = 0;
                                     }
                                     else
                                     {
@@ -376,8 +393,7 @@ public class AreaProtection : FortressCraftMod
                                         {
                                             allowedPlayers.Add(player);
                                         }
-                                        ModManager.ModSendServerCommToClient("Maverick.AreaProtection", player, 3);
-                                        yield return new WaitForSeconds(0.5f);
+                                        message.allowedToClaim = 1;
                                     }
                                 }
 
@@ -386,29 +402,31 @@ public class AreaProtection : FortressCraftMod
                                     if (NetworkManager.instance.mAdminListManager.CheckAdminList(player.mUserID, player.mUserName))
                                     {
                                         player.mBuildPermission = eBuildPermission.Admin;
-                                        ModManager.ModSendServerCommToClient("Maverick.AreaProtection", player, 0);
+                                        message.permissions = 0;
                                     }
                                     else
                                     {
                                         if (cannotBuild == true)
                                         {
                                             player.mBuildPermission = eBuildPermission.Visitor;
-                                            ModManager.ModSendServerCommToClient("Maverick.AreaProtection", player, 4);
+                                            message.permissions = 4;
                                         }
                                         else
                                         {
                                             player.mBuildPermission = eBuildPermission.Builder;
-                                            ModManager.ModSendServerCommToClient("Maverick.AreaProtection", player, 2);
+                                            message.permissions = 2;
                                         }
                                     }
                                 }
+
+                                ModManager.ModSendServerCommToClient("Maverick.AreaProtection", player, message);
+                                yield return new WaitForSeconds(0.25f);
                             }
                         }
                     }
                 }
             }
         }
-        yield return new WaitForSeconds(1.5f);
     }
 
     // Gives starting items to a player.
