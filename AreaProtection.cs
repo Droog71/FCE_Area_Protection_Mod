@@ -111,6 +111,17 @@ public class AreaProtection : FortressCraftMod
         File.WriteAllText(playersFilePath, playerData);
     }
 
+    // Returns true when the player is trying to chat in a claimed area.
+    private bool ChatOverrideRequired()
+    {
+        bool b1 = UIManager.HudShown;
+        bool b2 = !UIManager.AllowInteracting;
+        bool b3 = !UIManager.mbEditingTextField;
+        bool b4 = UIManager.instance.mChatPanel.ShouldShow();
+        bool b5 = !UIManager.instance.WorkshopDetailPanel.activeSelf;
+        return b1 && b2 && b3 && b4 && b5;
+    }
+
     // Called once per frame by unity engine.
     public void Update()
     {
@@ -128,6 +139,14 @@ public class AreaProtection : FortressCraftMod
             if (Input.GetKeyDown(KeyCode.End))
             {
                 showGUI = !showGUI;
+            }
+
+            if (Input.GetKeyUp(KeyCode.Return))
+            {
+                if (ChatOverrideRequired())
+                {
+                    UIManager.instance.mChatPanel.ShowUI();
+                }
             }
 
             UpdateClient();
