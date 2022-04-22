@@ -227,6 +227,11 @@ public class AreaProtection : FortressCraftMod
 
             int readInt4 = netIncomingMessage.ReadInt32();
             NetworkManager.instance.mClientThread.mPlayer.mBuildPermission = (eBuildPermission)readInt4;
+
+            if ((eBuildPermission)readInt4 == eBuildPermission.Visitor)
+            {
+                UIManager.AllowInteracting = false;
+            }
         }
     }
 
