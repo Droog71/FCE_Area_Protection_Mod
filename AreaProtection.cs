@@ -9,6 +9,7 @@ using System.Collections.Generic;
 public class AreaProtection : FortressCraftMod
 {
     private bool showGUI = true;
+    private bool allowInteractionAtSpawn;
     private Coroutine serverCoroutine;
     private Vector3 playerPosition;
     private Vector3 clientAreaPosition;
@@ -21,8 +22,16 @@ public class AreaProtection : FortressCraftMod
     private static readonly string assemblyFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
     private static readonly string protectionCylinderTexurePath = Path.Combine(assemblyFolder, "Images/ProtectionCylinder.png");
     private UriBuilder protectionCylinderUriBuilder = new UriBuilder(protectionCylinderTexurePath);
+    private static readonly string settingsFilePath = Path.Combine(assemblyFolder, "settings.txt");
     private static readonly string areasFilePath = Path.Combine(assemblyFolder, "areas.txt");
     private static readonly string playersFilePath = Path.Combine(assemblyFolder, "players.txt");
+
+    private enum AreaPermission
+    {
+        None,
+        Interaction,
+        Building
+    }
 
     // Registers the mod.
     public override ModRegistrationData Register()
@@ -48,8 +57,35 @@ public class AreaProtection : FortressCraftMod
 
         if (WorldScript.mbIsServer || NetworkManager.mbHostingServer)
         {
+            LoadSettings();
             LoadAreas();
             LoadPlayers();
+        }
+    }
+
+    // Loads settings from disk.
+    private void LoadSettings()
+    {
+        string fileContents = File.ReadAllText(settingsFilePath);
+        string[] allSettings = fileContents.Split('\n');
+        foreach (string entry in allSettings)
+        {
+            string[] splitEntry = entry.Split(':');
+            if (splitEntry.Length > 1)
+            {
+                string entryName = splitEntry[0];
+                if (entryName == "allowInteractionAtSpawn")
+                {
+                    try
+                    {
+                        allowInteractionAtSpawn = bool.Parse(splitEntry[1]);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.Log("Area Protection Mod: Error loading settings file: " + e.Message);
+                    }
+                }
+            }
         }
     }
 
@@ -211,9 +247,9 @@ public class AreaProtection : FortressCraftMod
     private static void ClientRead(NetIncomingMessage netIncomingMessage)
     {
         int readInt1 = netIncomingMessage.ReadInt32();
-        int playerID = (int)NetworkManager.instance.mClientThread.mPlayer.mUserID;
+        Player player = NetworkManager.instance.mClientThread.mPlayer;
 
-        if (readInt1 == playerID)
+        if (readInt1 == (int)player.mUserID)
         {
             int readInt2 = netIncomingMessage.ReadInt32();
 
@@ -226,12 +262,9 @@ public class AreaProtection : FortressCraftMod
             ableToClaim = readInt3 == 1;
 
             int readInt4 = netIncomingMessage.ReadInt32();
-            NetworkManager.instance.mClientThread.mPlayer.mBuildPermission = (eBuildPermission)readInt4;
-
-            if ((eBuildPermission)readInt4 == eBuildPermission.Visitor)
-            {
-                UIManager.AllowInteracting = false;
-            }
+            AreaPermission permission = (AreaPermission)readInt4;
+            UIManager.AllowInteracting = permission != AreaPermission.None;
+            UIManager.AllowBuilding = permission == AreaPermission.Building && UIManager.CursorShown == false;
         }
     }
 
@@ -364,6 +397,7 @@ public class AreaProtection : FortressCraftMod
                                 Vector3 clientPosition = new Vector3(x, y, z);
                                 bool cannotBuild = false;
                                 bool cannotClaim = false;
+                                bool interactionException = false;
 
                                 for (int j = 0; j < areas.Count; j++)
                                 {
@@ -382,6 +416,14 @@ public class AreaProtection : FortressCraftMod
                                         {
                                             cannotBuild = true;
                                         }
+
+                                        Vector2 spawn_pos = new Vector2(0, 0);
+                                        float spawnDistance = Vector2.Distance(clientPos2D, spawn_pos);
+
+                                        if (spawnDistance <= 250 && allowInteractionAtSpawn == true)
+                                        {
+                                            interactionException = true;
+                                        }
                                     }
                                 }
 
@@ -391,6 +433,8 @@ public class AreaProtection : FortressCraftMod
                                 {
                                     if (!savedPlayers.Contains(player.mUserID + player.mUserName))
                                     {
+                                        NetworkManager.instance.mBuilderListManager.SingleAccess(player.mUserName);
+                                        Announce("Promoted " + player.mUserName + " to builder (you may need to rejoin the server");
                                         Announce("Giving starting items to " + player.mUserName);
                                         SavePlayer(player.mUserID + player.mUserName);
                                         message.newPlayer = 1;
@@ -425,19 +469,23 @@ public class AreaProtection : FortressCraftMod
                                 {
                                     if (NetworkManager.instance.mAdminListManager.CheckAdminList(player.mUserID, player.mUserName))
                                     {
-                                        player.mBuildPermission = eBuildPermission.Admin;
-                                        message.permissions = 0;
+                                        message.permissions = 2;
                                     }
                                     else
                                     {
                                         if (cannotBuild == true)
                                         {
-                                            player.mBuildPermission = eBuildPermission.Visitor;
-                                            message.permissions = 4;
+                                            if (interactionException == true)
+                                            {
+                                                message.permissions = 1;
+                                            }
+                                            else
+                                            {
+                                                message.permissions = 0;
+                                            }
                                         }
                                         else
                                         {
-                                            player.mBuildPermission = eBuildPermission.Builder;
                                             message.permissions = 2;
                                         }
                                     }
@@ -545,7 +593,7 @@ public class AreaProtection : FortressCraftMod
                     "\nAdministrative rights enabled." +
                     "\nPress End key to toggle messages.";
                 }
-                else if (permission == eBuildPermission.Visitor)
+                else if (UIManager.AllowBuilding == false)
                 {
                     message = "[Area Protection Mod]" +
                     "\nThis area is protected." +
