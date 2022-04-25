@@ -319,13 +319,18 @@ public class AreaProtection : FortressCraftMod
 
             Player player = NetworkManager.instance.mClientThread.mPlayer;
             System.Net.IPAddress serverIP = NetworkManager.instance.mClientThread.serverIP;
+
+            float x = player.mnWorldX - WorldScript.instance.mWorldData.mSpawnX;
+            float y = player.mnWorldY - WorldScript.instance.mWorldData.mSpawnY;
+            float z = player.mnWorldZ - WorldScript.instance.mWorldData.mSpawnZ;
+
             PlayerPrefs.SetInt(player.mUserID + ":" + serverIP + "createdCylinder", 1);
             PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "cylinderX", Camera.main.transform.position.x);
             PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "cylinderY", Camera.main.transform.position.y);
             PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "cylinderZ", Camera.main.transform.position.z);
-            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "areaX", player.mnWorldX);
-            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "areaY", player.mnWorldY);
-            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "areaZ", player.mnWorldZ);
+            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "areaX", x);
+            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "areaY", y);
+            PlayerPrefs.SetFloat(player.mUserID + ":" + serverIP + "areaZ", z);
             PlayerPrefs.Save();
             clientAreaPosition = playerPosition;
         }
@@ -529,7 +534,7 @@ public class AreaProtection : FortressCraftMod
         protectionCylinder.GetComponent<Renderer>().material.EnableKeyword("_ALPHATEST_ON");
 
         GameObject protectionCylinderInner = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        protectionCylinderInner.transform.position = Camera.main.transform.position;
+        protectionCylinderInner.transform.position = position;
         protectionCylinderInner.transform.localScale += new Vector3(372, 4000, 372);
         ConvertNormals(protectionCylinderInner);
         protectionCylinderInner.GetComponent<Renderer>().material.mainTexture = protectionCylinderTexture;
