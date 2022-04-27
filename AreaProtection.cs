@@ -169,12 +169,22 @@ public class AreaProtection : FortressCraftMod
         {
             if (Input.GetKeyDown(KeyCode.Home))
             {
-                ClientClaimArea();
+                if (Input.GetKey(KeyCode.LeftShift))
+                {
+                    TeleportHome();
+                }
+                else if (Input.GetKey(KeyCode.LeftControl))
+                {
+                    ClientClaimArea();
+                }
             }
 
             if (Input.GetKeyDown(KeyCode.End))
             {
-                showGUI = !showGUI;
+                if (Input.GetKey(KeyCode.LeftShift))
+                {
+                    showGUI = !showGUI;
+                }
             }
 
             if (Input.GetKeyUp(KeyCode.Return))
@@ -225,6 +235,17 @@ public class AreaProtection : FortressCraftMod
                 float z = player.mnWorldZ - WorldScript.instance.mWorldData.mSpawnZ;
                 playerPosition = new Vector3(x, y, z);
             }
+        }
+    }
+
+    private void TeleportHome()
+    {
+        if (protectionCylinder != null)
+        {
+            float x = clientAreaPosition.x;
+            float y = clientAreaPosition.y + 5;
+            float z = clientAreaPosition.z;
+            WorldScript.Teleport(x + " " + y + " " + z);
         }
     }
 
@@ -439,7 +460,7 @@ public class AreaProtection : FortressCraftMod
                                     if (!savedPlayers.Contains(player.mUserID + player.mUserName))
                                     {
                                         NetworkManager.instance.mBuilderListManager.SingleAccess(player.mUserName);
-                                        Announce("Promoted " + player.mUserName + " to builder (you may need to rejoin the server");
+                                        Announce("Promoted " + player.mUserName + " to builder (you will need to rejoin the server");
                                         Announce("Giving starting items to " + player.mUserName);
                                         SavePlayer(player.mUserID + player.mUserName);
                                         message.newPlayer = 1;
@@ -581,43 +602,54 @@ public class AreaProtection : FortressCraftMod
         }
     }
 
+    // Returns true if messages should be displayed.
+    private bool DisplayMessage()
+    {
+        bool b1 = !WorldScript.mbIsServer;
+        bool b2 = GameState.PlayerSpawned;
+        bool b3 = showGUI == true;
+        bool b4 = !UIManager.CursorShown;
+        return b1 && b2 && b3 && b4;
+    }
+
     // Displays build permission info.
     public void OnGUI()
     {
         try
         {
-            if (!WorldScript.mbIsServer && GameState.PlayerSpawned && showGUI == true)
+            if (DisplayMessage())
             {
                 string message = "";
                 Rect infoRect = new Rect(Screen.width * 0.6f, Screen.height * 0.4f, 500, 100);
-
                 eBuildPermission permission = NetworkManager.instance.mClientThread.mPlayer.mBuildPermission;
+
                 if (permission == eBuildPermission.Admin)
                 {
                     message = "[Area Protection Mod]" +
                     "\nAdministrative rights enabled." +
-                    "\nPress End key to toggle messages.";
+                    "\nPress Left Shift + End key to toggle messages.";
                 }
                 else if (UIManager.AllowBuilding == false)
                 {
                     message = "[Area Protection Mod]" +
                     "\nThis area is protected." +
                     "\nYou cannot build here." +
-                    "\nPress End key to toggle messages.";
+                    "\nPress Left Shift + End key to toggle messages.";
                 }
                 else if (ableToClaim == true && protectionCylinder == null)
                 {
                     message = "[Area Protection Mod]" +
                     "\nPress Home key to claim this area." +
-                    "\nPress End key to toggle messages.";
+                    "\nPress Left Shift + End key to toggle messages.";
                 }
                 else if (ableToClaim == true && protectionCylinder != null)
                 {
-                    message = "[Area Protection Mod]" +
-                    "\nPress Home key to relocate your claimed area." +
+                    message = "[Area Protection Mod]" +                
                     "\nThe coordinates of your protected area are " + clientAreaPosition +
                     "\nYour current coordinates are " + playerPosition +
-                    "\nPress End key to toggle messages.";
+                    "\nPress Left Control + Home key to relocate your claimed area." +
+                    "\nPress Left Shift + Home key to teleport to your protected area." +
+                    "\nPress Left Shift + End key to toggle messages.";
                 }
                 else if (ableToClaim == false && protectionCylinder != null)
                 {
@@ -626,14 +658,15 @@ public class AreaProtection : FortressCraftMod
                     "\nYou are too close to another protected area." +
                     "\nThe coordinates of your protected area are " + clientAreaPosition +
                     "\nYour current coordinates are " + playerPosition +
-                    "\nPress End key to toggle messages.";
+                    "\nPress Left Shift + Home key to teleport to your protected area." +
+                    "\nPress Left Shift + End key to toggle messages.";
                 }
                 else if (ableToClaim == false && protectionCylinder == null)
                 {
                     message = "[Area Protection Mod]" +
                     "\nYou cannot claim this area." +
                     "\nYou are too close to another protected area." +
-                    "\nPress End key to toggle messages.";
+                    "\nPress Left Shift + End key to toggle messages.";
                 }
 
                 int fontSize = GUI.skin.label.fontSize;
