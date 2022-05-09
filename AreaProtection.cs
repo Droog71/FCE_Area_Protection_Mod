@@ -10,6 +10,7 @@ public class AreaProtection : FortressCraftMod
 {
     private bool showGUI = true;
     private bool allowInteractionAtSpawn;
+    private bool allowInteractionEverywhere;
     private Coroutine serverCoroutine;
     private Vector3 playerPosition;
     private Vector3 clientAreaPosition;
@@ -79,6 +80,17 @@ public class AreaProtection : FortressCraftMod
                     try
                     {
                         allowInteractionAtSpawn = bool.Parse(splitEntry[1]);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.Log("Area Protection Mod: Error loading settings file: " + e.Message);
+                    }
+                }
+                if (entryName == "allowInteractionEverywhere")
+                {
+                    try
+                    {
+                        allowInteractionEverywhere = bool.Parse(splitEntry[1]);
                     }
                     catch (Exception e)
                     {
@@ -457,7 +469,7 @@ public class AreaProtection : FortressCraftMod
                                         Vector2 spawn_pos = new Vector2(0, 0);
                                         float spawnDistance = Vector2.Distance(clientPos2D, spawn_pos);
 
-                                        if (spawnDistance <= 250 && allowInteractionAtSpawn == true)
+                                        if (allowInteractionEverywhere || (spawnDistance <= 250 && allowInteractionAtSpawn))
                                         {
                                             interactionException = true;
                                         }
